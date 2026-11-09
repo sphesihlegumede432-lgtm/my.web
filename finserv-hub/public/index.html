@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FinServ Solutions | Finance Hub</title>
+<style>
+  :root { --bg:#0e1726; --panel:#16233a; --panel2:#1d2f4d; --accent:#2ee6a6; --accent2:#4da3ff; --text:#e8eef8; --muted:#8fa3bf; --warn:#ffb454; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:Segoe UI,Arial,sans-serif; }
+  header { padding:22px 32px; background:linear-gradient(120deg,#0b1f3a,#12385f); border-bottom:1px solid #24405f; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  header h1 { margin:0; font-size:1.4rem; } header h1 span { color:var(--accent); }
+  .badge { background:#0b2a22; color:var(--accent); border:1px solid #1b6b52; padding:5px 12px; border-radius:20px; font-size:.8rem; }
+  nav { display:flex; gap:6px; padding:14px 32px 0; flex-wrap:wrap; }
+  nav button { background:transparent; color:var(--muted); border:0; border-bottom:3px solid transparent; padding:10px 16px; cursor:pointer; font-size:.95rem; }
+  nav button.active { color:var(--text); border-color:var(--accent); }
+  main { max-width:960px; margin:0 auto; padding:24px 20px 50px; }
+  section { display:none; } section.active { display:block; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:20px; }
+  .panel { background:var(--panel); border-radius:12px; padding:20px; margin-bottom:20px; }
+  label { display:block; font-size:.8rem; color:var(--muted); margin-bottom:4px; }
+  input, select { width:100%; padding:10px; border-radius:8px; border:1px solid #2c4468; background:var(--panel2); color:var(--text); font-size:.95rem; }
+  button.go { background:var(--accent); color:#06281e; border:0; padding:11px 22px; border-radius:8px; font-weight:600; cursor:pointer; margin-top:14px; }
+  .stat { background:var(--panel2); border-radius:10px; padding:16px; }
+  .stat small { color:var(--muted); display:block; margin-bottom:6px; } .stat b { font-size:1.35rem; color:var(--accent); }
+  .stat.alt b { color:var(--accent2); } .stat.warn b { color:var(--warn); }
+  canvas { width:100%; height:240px; background:var(--panel2); border-radius:10px; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; } td { padding:9px 4px; border-bottom:1px solid #243a5c; } td:first-child { color:var(--muted); width:35%; }
+  .note { color:var(--muted); font-size:.8rem; margin-top:10px; }
+  #loadMsg { margin-left:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>FinServ <span>Finance Hub</span></h1>
+  <div class="badge">&#9679; Running on Azure App Service (PaaS)</div>
+</header>
+<nav id="tabs">
+  <button class="active" data-t="loan">Loan Calculator</button>
+  <button data-t="fx">Money Transfer</button>
+  <button data-t="save">Savings Planner</button>
+  <button data-t="ops">Cloud Status</button>
+</nav>
+<main>
+  <section id="loan" class="active">
+    <div class="panel">
+      <div class="grid">
+        <div><label>Loan amount (R)</label><input id="l_amt" type="number" value="250000"></div>
+        <div><label>Interest rate (% p.a.)</label><input id="l_rate" type="number" step="0.01" value="11.75"></div>
+        <div><label>Term (months)</label><input id="l_months" type="number" value="60"></div>
+      </div>
+      <button class="go" onclick="calcLoan()">Calculate</button>
+    </div>
+    <div class="grid" id="l_stats"></div>
+    <div class="panel"><b>Outstanding balance over time</b><canvas id="l_chart" width="900" height="240"></canvas></div>
+  </section>
+
+  <section id="fx">
+    <div class="panel">
+      <div class="grid">
+        <div><label>Amount to send</label><input id="f_amt" type="number" value="2000"></div>
+        <div><label>From</label><select id="f_from"></select></div>
+        <div><label>To</label><select id="f_to"></select></div>
+      </div>
+      <button class="go" onclick="calcFx()">Get quote</button>
+      <p class="note">Demo rates only. A 1.5% transfer fee is applied.</p>
+    </div>
+    <div class="grid" id="f_stats"></div>
+  </section>
+
+  <section id="save">
+    <div class="panel">
+      <div class="grid">
+        <div><label>Starting amount (R)</label><input id="s_start" type="number" value="5000"></div>
+        <div><label>Monthly deposit (R)</label><input id="s_monthly" type="number" value="1000"></div>
+        <div><label>Interest (% p.a.)</label><input id="s_rate" type="number" step="0.1" value="7"></div>
+        <div><label>Years</label><input id="s_years" type="number" value="10"></div>
+      </div>
+      <button class="go" onclick="calcSave()">Project growth</button>
+    </div>
+    <div class="grid" id="s_stats"></div>
+    <div class="panel"><b>Projected balance</b><canvas id="s_chart" width="900" height="240"></canvas></div>
+  </section>
+
+  <section id="ops">
+    <div class="panel">
+      <b>Server information</b>
+      <table id="info"></table>
+      <button class="go" onclick="loadInfo()">Refresh</button>
+    </div>
+    <div class="panel">
+      <b>Autoscale test</b>
+      <p class="note">Burns CPU for 20 seconds. Click from several tabs to push the plan above 70% CPU, then refresh the server info to see new instance IDs appear.</p>
+      <button class="go" onclick="burn()">Generate CPU load</button><span id="loadMsg"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+const R = n => 'R ' + Number(n).toLocaleString('en-ZA', {minimumFractionDigits:2, maximumFractionDigits:2});
+const stat = (label, val, cls='') => `<div class="stat ${cls}"><small>${label}</small><b>${val}</b></div>`;
+const api = async url => (await fetch(url)).json();
+
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#tabs button, section').forEach(e => e.classList.remove('active'));
+  b.classList.add('active'); document.getElementById(b.dataset.t).classList.add('active');
+  if (b.dataset.t === 'ops') loadInfo();
+});
+
+function drawChart(id, xs, ys, color, fmtX) {
+  const c = document.getElementById(id), g = c.getContext('2d'), W = c.width, H = c.height, p = 40;
+  g.clearRect(0,0,W,H);
+  const max = Math.max(...ys) * 1.05 || 1;
+  g.strokeStyle = '#2c4468'; g.fillStyle = '#8fa3bf'; g.font = '12px Segoe UI';
+  for (let i = 0; i <= 4; i++) { const y = p/2 + (H-p*1.2)*i/4; g.beginPath(); g.moveTo(p*1.6,y); g.lineTo(W-10,y); g.stroke();
+    g.fillText('R'+Math.round(max*(1-i/4)/1000)+'k', 4, y+4); }
+  const px = i => p*1.6 + (W-p*1.6-20) * i/(xs.length-1 || 1), py = v => p/2 + (H-p*1.2)*(1 - v/max);
+  g.beginPath(); ys.forEach((v,i) => i ? g.lineTo(px(i),py(v)) : g.moveTo(px(i),py(v)));
+  g.strokeStyle = color; g.lineWidth = 3; g.stroke();
+  g.lineTo(px(ys.length-1), H-p*0.7); g.lineTo(px(0), H-p*0.7); g.closePath(); g.globalAlpha = .15; g.fillStyle = color; g.fill(); g.globalAlpha = 1;
+  g.fillStyle = '#8fa3bf'; xs.forEach((x,i) => { if (xs.length < 14 || i % Math.ceil(xs.length/8) === 0) g.fillText(fmtX(x), px(i)-8, H-8); });
+}
+
+async function calcLoan() {
+  const d = await api(`/api/loan?amount=${l_amt.value}&rate=${l_rate.value}&months=${l_months.value}`);
+  l_stats.innerHTML = stat('Monthly payment', R(d.monthlyPayment)) + stat('Total interest', R(d.totalInterest), 'warn') + stat('Total repaid', R(d.totalRepaid), 'alt');
+  drawChart('l_chart', d.schedule.map(s=>s.month), d.schedule.map(s=>s.balance), '#4da3ff', m => (m/12).toFixed(m%12?1:0)+'y');
+}
+
+async function calcFx() {
+  const d = await api(`/api/convert?from=${f_from.value}&to=${f_to.value}&amount=${f_amt.value}`);
+  if (d.error) return f_stats.innerHTML = stat('Error', d.error);
+  f_stats.innerHTML = stat('Exchange rate', `1 ${d.from} = ${d.rate} ${d.to}`, 'alt') + stat(`Fee (${d.feePercent}%)`, `${d.fee} ${d.from}`, 'warn') + stat('Recipient gets', `${d.received.toLocaleString()} ${d.to}`);
+}
+
+async function calcSave() {
+  const d = await api(`/api/savings?start=${s_start.value}&monthly=${s_monthly.value}&rate=${s_rate.value}&years=${s_years.value}`);
+  s_stats.innerHTML = stat('Final balance', R(d.finalBalance)) + stat('You contributed', R(d.totalContributed), 'alt') + stat('Interest earned', R(d.interestEarned), 'warn');
+  drawChart('s_chart', d.points.map(p=>p.year), d.points.map(p=>p.balance), '#2ee6a6', y => y+'y');
+}
+
+async function loadInfo() {
+  const d = await api('/api/info');
+  const L = { instanceId:'Instance ID', siteName:'Web App name', region:'Region', node:'Node.js', totalMemoryMB:'Memory (MB)', time:'Server time' };
+  info.innerHTML = Object.keys(L).map(k => `<tr><td>${L[k]}</td><td>${d[k]}</td></tr>`).join('');
+}
+async function burn() { loadMsg.textContent = 'Running...'; try { await fetch('/api/load?seconds=20'); loadMsg.textContent = 'Done'; } catch(e) { loadMsg.textContent = 'Failed'; } }
+
+['ZAR','USD','EUR','GBP','BWP','ZMW','MZN'].forEach(c => { f_from.add(new Option(c,c)); f_to.add(new Option(c,c)); });
+f_from.value = 'ZAR'; f_to.value = 'USD';
+calcLoan(); calcFx(); calcSave();
+</script>
+</body>
+</html>
